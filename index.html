@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Focus Timer</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+
+    <div id="topBar">
+        focused total time: <span id="totalFocus">00:00</span>
+    </div>
+
+    <div class="container">
+        <h1 id="mode">FOCUS</h1>
+
+        <div class="timer" id="timer">60:00</div>
+
+        <div class="controls">
+            <button id="startPause">Start</button>
+            <button id="reset">Reset</button>
+        </div>
+
+        <div class="settings">
+            <div>
+                <label>Focus (min)</label>
+                <input type="number" id="focusInput" value="60" min="1">
+            </div>
+            <div>
+                <label>Break (min)</label>
+                <input type="number" id="breakInput" value="15" min="1">
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
