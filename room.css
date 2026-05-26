@@ -1,0 +1,283 @@
+/* Room page overrides & additions — imports style.css first via <link> */
+
+/* ── Top bar (room-page version) ─────────────────────────────────────── */
+
+#topBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  height: 48px;
+  gap: 16px;
+}
+
+#topBarLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+#roomLabel {
+  opacity: 0.65;
+}
+
+#roomIdDisplay {
+  font-weight: 700;
+  letter-spacing: 2px;
+  font-size: 15px;
+  font-family: monospace;
+}
+
+#copyRoomId {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 3px 8px;
+  color: white;
+  transition: background 0.15s;
+  line-height: 1.4;
+}
+
+#copyRoomId:hover { background: rgba(255, 255, 255, 0.22); }
+
+#topBarCenter {
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+#topBarRight #leaveBtn {
+  background: rgba(220, 60, 60, 0.55);
+  border: 1px solid rgba(255, 80, 80, 0.4);
+  color: white;
+  padding: 6px 16px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+#leaveBtn:hover { background: rgba(220, 50, 50, 0.85); }
+
+/* ── Two-column layout ────────────────────────────────────────────────── */
+
+/* Reset body centering from style.css for the room page */
+body {
+  display: block;
+  height: auto;
+  min-height: 100vh;
+}
+
+.room-layout {
+  display: flex;
+  gap: 20px;
+  padding: 68px 20px 24px; /* 68px accounts for the fixed top bar */
+  min-height: 100vh;
+  align-items: flex-start;
+}
+
+/* ── Participants panel ───────────────────────────────────────────────── */
+
+.participants-panel {
+  flex: 1;
+  background: rgba(27, 180, 47, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  padding: 24px;
+  backdrop-filter: blur(4px);
+}
+
+.panel-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 20px;
+  opacity: 0.85;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.participants-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: 14px;
+}
+
+.connecting-msg,
+.empty-room-msg {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 48px 20px;
+  opacity: 0.45;
+  font-size: 14px;
+}
+
+/* ── Participant card ─────────────────────────────────────────────────── */
+
+.participant-card {
+  background: rgba(27, 180, 47, 0.13);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 20px 14px 16px;
+  text-align: center;
+  position: relative;
+  animation: cardEnter 0.28s ease-out;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.participant-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+/* Highlight the current user's own card */
+.participant-card.is-you {
+  border-color: rgba(80, 210, 110, 0.45);
+  background: rgba(27, 180, 47, 0.22);
+  box-shadow: 0 0 14px rgba(27, 180, 47, 0.18);
+}
+
+@keyframes cardEnter {
+  from { opacity: 0; transform: scale(0.86) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.participant-avatar {
+  font-size: 46px;
+  line-height: 1;
+  display: block;
+  margin-bottom: 10px;
+}
+
+.participant-name {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 9px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.participant-status {
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  display: inline-block;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Status colour themes */
+.status-idle     { background: rgba(160, 160, 160, 0.28); }
+.status-focused  { background: rgba(50,  200,  80, 0.35); }
+.status-break    { background: rgba(80,  160, 220, 0.38); }
+.status-pomodoro { background: rgba(230, 100,  50, 0.38); }
+.status-music    { background: rgba(160,  80, 220, 0.35); }
+.status-done     { background: rgba(220, 190,  50, 0.38); }
+.status-brb      { background: rgba(200, 200, 200, 0.22); }
+
+/* Badges */
+.host-badge,
+.you-badge {
+  position: absolute;
+  top: 9px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+  line-height: 1.5;
+}
+
+.host-badge {
+  right: 9px;
+  background: rgba(255, 200, 50, 0.45);
+}
+
+.you-badge {
+  left: 9px;
+  background: rgba(80, 210, 110, 0.45);
+}
+
+/* ── Timer panel (right column) ───────────────────────────────────────── */
+
+.timer-panel {
+  width: 300px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 68px; /* stays visible while scrolling the grid */
+}
+
+.room-container {
+  width: 100%;
+}
+
+/* ── Status selector ─────────────────────────────────────────────────── */
+
+.status-selector {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 16px;
+}
+
+.status-selector label {
+  font-size: 12px;
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.status-selector select {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: white;
+  padding: 8px 10px;
+  border-radius: 7px;
+  font-size: 14px;
+  cursor: pointer;
+  width: 100%;
+}
+
+.status-selector select:focus {
+  outline: none;
+  border-color: rgba(27, 180, 47, 0.7);
+}
+
+.status-selector select option {
+  background: #0e2a12;
+  color: white;
+}
+
+/* Status selector is disabled (greyed) while timer is running — status is auto-derived */
+.status-selector select:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────── */
+
+@media (max-width: 700px) {
+  .room-layout {
+    flex-direction: column;
+    padding: 60px 12px 20px;
+  }
+
+  .timer-panel {
+    width: 100%;
+    position: static;
+  }
+
+  .participants-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  }
+
+  #topBarCenter { display: none; }
+}

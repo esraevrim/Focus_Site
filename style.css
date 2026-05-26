@@ -1,0 +1,275 @@
+* {
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    background: url("./background.png");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    color: rgb(255, 255, 255);
+    margin: 0;
+}
+
+#topBar {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.2);
+    text-align: center;
+    padding: 10px;
+    font-size: 14px;
+    z-index: 10;
+}
+
+.container {
+    background: rgba(27, 180, 47, 0.18);
+    padding: 40px 35px;
+    border-radius: 14px;
+    text-align: center;
+    width: 320px;
+}
+
+.timer {
+    font-size: 64px;
+    margin: 20px 0;
+}
+
+.controls {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.controls button {
+    padding: 10px 22px;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.controls button:hover {
+    opacity: 0.9;
+}
+
+.settings {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.settings div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.settings label {
+    font-size: 14px;
+    margin-bottom: 5px;
+}
+
+.settings input {
+    width: 80px;
+    text-align: center;
+    padding: 6px;
+    border-radius: 5px;
+    border: none;
+}
+
+/* ── Study Room Buttons ───────────────────────────────────────────────── */
+
+.room-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 22px;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    padding-top: 20px;
+}
+
+.room-btn {
+    padding: 10px 14px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.3px;
+    transition: opacity 0.2s, transform 0.15s;
+}
+
+.create-btn {
+    background: rgba(27, 180, 47, 0.55);
+    color: white;
+    border: 1px solid rgba(27, 180, 47, 0.7);
+}
+
+.join-btn {
+    background: rgba(255, 255, 255, 0.13);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+}
+
+.room-btn:hover {
+    opacity: 0.85;
+    transform: translateY(-1px);
+}
+
+/* ── Modal Overlay ────────────────────────────────────────────────────── */
+
+.modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(6px);
+    z-index: 200;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal {
+    background: rgba(15, 50, 20, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 18px;
+    padding: 32px 28px 28px;
+    width: 400px;
+    max-width: 94vw;
+    color: white;
+    position: relative;
+    animation: modalIn 0.22s ease-out;
+}
+
+@keyframes modalIn {
+    from { opacity: 0; transform: scale(0.93) translateY(10px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.modal h2 {
+    margin: 0 0 24px;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.modal-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+    line-height: 1;
+    padding: 4px;
+}
+
+.modal-close:hover { opacity: 1; }
+
+.modal-field {
+    margin-bottom: 20px;
+}
+
+.modal-field label {
+    display: block;
+    font-size: 13px;
+    margin-bottom: 8px;
+    opacity: 0.75;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.modal-field input {
+    width: 100%;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.09);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 8px;
+    color: white;
+    font-size: 15px;
+    transition: border-color 0.2s;
+}
+
+.modal-field input::placeholder { opacity: 0.35; }
+
+.modal-field input:focus {
+    outline: none;
+    border-color: rgba(27, 180, 47, 0.75);
+}
+
+/* ── Avatar Picker Grid ───────────────────────────────────────────────── */
+
+.avatar-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 6px;
+}
+
+.avatar-option {
+    font-size: 22px;
+    background: rgba(255, 255, 255, 0.07);
+    border: 2px solid transparent;
+    border-radius: 8px;
+    padding: 5px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.avatar-option:hover {
+    background: rgba(255, 255, 255, 0.18);
+}
+
+.avatar-option.selected {
+    border-color: rgba(27, 180, 47, 0.9);
+    background: rgba(27, 180, 47, 0.25);
+}
+
+/* ── Modal Submit & Error ─────────────────────────────────────────────── */
+
+.modal-error {
+    color: rgba(255, 100, 100, 0.9);
+    font-size: 13px;
+    margin: 0 0 12px;
+    min-height: 18px;
+}
+
+.modal-submit {
+    width: 100%;
+    padding: 12px;
+    background: rgba(27, 180, 47, 0.7);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.15s;
+}
+
+.modal-submit:hover { background: rgba(27, 180, 47, 0.9); }
+.modal-submit:active { transform: scale(0.98); }
+
+.modal-submit:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none;
+}

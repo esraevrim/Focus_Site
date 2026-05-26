@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Study Room</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="room.css" />
+</head>
+
+<body>
+
+  <!-- Top bar: room ID + total focus time + leave button -->
+  <div id="topBar">
+    <span id="topBarLeft">
+      <span id="roomLabel">Room:</span>
+      <span id="roomIdDisplay"></span>
+      <button id="copyRoomId" title="Copy Room ID to share with friends">📋</button>
+    </span>
+    <span id="topBarCenter">
+      focused total time: <span id="totalFocus">00:00</span>
+    </span>
+    <span id="topBarRight">
+      <button id="leaveBtn">Leave Room</button>
+    </span>
+  </div>
+
+  <div class="room-layout">
+
+    <!-- Left panel: all participants in the room -->
+    <div class="participants-panel">
+      <h2 class="panel-title">Who's Studying</h2>
+      <div class="participants-grid" id="participantsGrid">
+        <div class="connecting-msg">Connecting…</div>
+      </div>
+    </div>
+
+    <!-- Right panel: personal timer (same functionality as index.html) -->
+    <div class="timer-panel">
+      <div class="container room-container">
+        <h1 id="mode">FOCUS</h1>
+        <div class="timer" id="timer">60:00</div>
+
+        <div class="controls">
+          <button id="startPause">Start</button>
+          <button id="reset">Reset</button>
+        </div>
+
+        <div class="settings">
+          <div>
+            <label>Focus (min)</label>
+            <input type="number" id="focusInput" value="60" min="1" />
+          </div>
+          <div>
+            <label>Break (min)</label>
+            <input type="number" id="breakInput" value="15" min="1" />
+          </div>
+        </div>
+
+        <!-- Manual status override (only active when timer is stopped) -->
+        <div class="status-selector">
+          <label>Your Status</label>
+          <select id="statusSelect">
+            <option value="Idle">💤 Idle</option>
+            <option value="Focused">🟢 Focused</option>
+            <option value="On a Break">☕ On a Break</option>
+            <option value="Pomodoro Active">🍅 Pomodoro Active</option>
+            <option value="Listening to Music">🎵 Listening to Music</option>
+            <option value="Done for Today">✅ Done for Today</option>
+            <option value="Be Right Back">🚶 Be Right Back</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Socket.IO client is auto-served by the server at this path -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="room.js"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Focus Timer</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+    <div id="topBar">
+        focused total time: <span id="totalFocus">00:00</span>
+    </div>
+
+    <div class="container">
+        <h1 id="mode">FOCUS</h1>
+
+        <div class="timer" id="timer">60:00</div>
+
+        <div class="controls">
+            <button id="startPause">Start</button>
+            <button id="reset">Reset</button>
+        </div>
+
+        <div class="settings">
+            <div>
+                <label>Focus (min)</label>
+                <input type="number" id="focusInput" value="60" min="1">
+            </div>
+            <div>
+                <label>Break (min)</label>
+                <input type="number" id="breakInput" value="15" min="1">
+            </div>
+        </div>
+
+        <!-- Study Room buttons — added below existing timer controls -->
+        <div class="room-actions">
+            <button class="room-btn create-btn" id="createRoomBtn">+ Create Study Room</button>
+            <button class="room-btn join-btn" id="joinRoomBtn">→ Enter a Study Room</button>
+        </div>
+    </div>
+
+    <!-- Modal — shown when creating or joining a room -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal" id="modal">
+            <button class="modal-close" id="modalClose" aria-label="Close">✕</button>
+            <h2 id="modalTitle">Create Study Room</h2>
+
+            <div class="modal-field" id="roomIdField" style="display:none">
+                <label>Room ID</label>
+                <input type="text" id="roomIdInput" placeholder="Enter 6-character room ID"
+                    maxlength="6" autocomplete="off" spellcheck="false">
+            </div>
+
+            <div class="modal-field">
+                <label>Your Nickname</label>
+                <input type="text" id="nicknameInput" placeholder="Enter your name" maxlength="20">
+            </div>
+
+            <div class="modal-field">
+                <label>Choose Your Avatar</label>
+                <div class="avatar-grid" id="avatarGrid"></div>
+            </div>
+
+            <p class="modal-error" id="modalError"></p>
+
+            <button class="modal-submit" id="modalSubmit">Create Room</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script src="room-modal.js"></script>
+</body>
+
+</html>
