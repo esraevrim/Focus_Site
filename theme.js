@@ -4,11 +4,9 @@
 
 (function () {
   const THEMES = [
-    { id: 'forest', name: 'Forest', file: './background.png',     mobilePortrait: './mobilforest.png' },
-    { id: 'dark',   name: 'Dark',   file: './darkbackgorund.png', mobilePortrait: './mobildark.png' },
+    { id: 'forest', name: 'Forest', file: './background.png' },
+    { id: 'dark',   name: 'Dark',   file: './darkbackgorund.png' },
   ];
-
-  const portraitMQ = window.matchMedia('(max-width: 768px) and (orientation: portrait)');
 
   const DEFAULTS = {
     themeId:     'forest',
@@ -49,16 +47,12 @@
   }
 
   function applyBackground(themeId) {
-    const t    = THEMES.find(t => t.id === themeId) || THEMES[0];
-    const file = (portraitMQ.matches && t.mobilePortrait) ? t.mobilePortrait : t.file;
-    document.body.style.backgroundImage    = `url('${file}')`;
+    const t = THEMES.find(t => t.id === themeId) || THEMES[0];
+    document.body.style.backgroundImage = `url('${t.file}')`;
     document.body.style.backgroundSize     = 'cover';
     document.body.style.backgroundPosition = 'center';
     document.body.style.backgroundRepeat   = 'no-repeat';
   }
-
-  // Swap background automatically when phone rotates
-  portraitMQ.addEventListener('change', () => applyBackground(loadPrefs().themeId));
 
   function applyAccent(hex) {
     const [r, g, b] = hexToRgb(hex);
