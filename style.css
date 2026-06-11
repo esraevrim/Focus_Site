@@ -459,18 +459,33 @@ body {
 /* ── Mobile ─────────────────────────────────────────────────────────────── */
 
 @media (max-width: 480px) {
+  html, body {
+    height: 100%;
+  }
+
   body {
     align-items: flex-start;
-    padding: 60px 16px 24px;
+    justify-content: center;
+    min-height: 100%;
+    height: auto;
+    padding: 56px 14px 24px;
   }
 
   .container {
     width: 100%;
-    padding: 28px 20px;
+    max-width: 420px;
+    padding: 28px 20px 24px;
+    margin: 0 auto;
+  }
+
+  h1#mode {
+    font-size: 22px;
+    margin: 0 0 4px;
   }
 
   .timer {
-    font-size: 52px;
+    font-size: 58px;
+    margin: 12px 0 16px;
   }
 
   #topBar {

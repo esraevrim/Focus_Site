@@ -49,11 +49,12 @@
   }
 
   function applyBackground(themeId) {
-    const t    = THEMES.find(t => t.id === themeId) || THEMES[0];
-    const file = (portraitMQ.matches && t.mobilePortrait) ? t.mobilePortrait : t.file;
+    const t        = THEMES.find(t => t.id === themeId) || THEMES[0];
+    const portrait = portraitMQ.matches;
+    const file     = (portrait && t.mobilePortrait) ? t.mobilePortrait : t.file;
     document.body.style.backgroundImage    = `url('${file}')`;
     document.body.style.backgroundSize     = 'cover';
-    document.body.style.backgroundPosition = 'center';
+    document.body.style.backgroundPosition = portrait ? 'bottom center' : 'center';
     document.body.style.backgroundRepeat   = 'no-repeat';
   }
 
