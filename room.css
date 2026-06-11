@@ -37,7 +37,7 @@
   cursor: pointer;
   font-size: 14px;
   padding: 3px 8px;
-  color: white;
+  color: var(--text-color);
   transition: background 0.15s;
   line-height: 1.4;
 }
@@ -271,7 +271,7 @@ body {
 .status-selector select {
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.18);
-  color: white;
+  color: var(--text-color);
   padding: 8px 10px;
   border-radius: 7px;
   font-size: 14px;
@@ -286,7 +286,7 @@ body {
 
 .status-selector select option {
   background: #0e2a12;
-  color: white;
+  color: var(--text-color);
 }
 
 .status-selector select:disabled {

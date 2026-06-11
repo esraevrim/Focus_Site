@@ -11,7 +11,7 @@
   const DEFAULTS = {
     themeId:     'forest',
     accentColor: '#1bb42f',
-    timerColor:  '#ffffff',
+    textColor:   '#ffffff',
   };
 
   // ── Persistence ──────────────────────────────────────────────────────────
@@ -19,6 +19,8 @@
   function loadPrefs() {
     try {
       const p = JSON.parse(localStorage.getItem('focusSitePrefs'));
+      // migrate old key name
+      if (p && p.timerColor && !p.textColor) p.textColor = p.timerColor;
       return Object.assign({}, DEFAULTS, p);
     } catch { return Object.assign({}, DEFAULTS); }
   }
@@ -77,14 +79,14 @@
     root.style.setProperty('--avatar-selected-bg',     `rgba(${r},${g},${b},0.25)`);
   }
 
-  function applyTimerColor(hex) {
-    document.documentElement.style.setProperty('--timer-color', hex);
+  function applyTextColor(hex) {
+    document.documentElement.style.setProperty('--text-color', hex);
   }
 
   function applyAll(prefs) {
     applyBackground(prefs.themeId);
     applyAccent(prefs.accentColor);
-    applyTimerColor(prefs.timerColor);
+    applyTextColor(prefs.textColor);
   }
 
   // ── Build customize panel UI ──────────────────────────────────────────────
@@ -117,8 +119,8 @@
           <input type="color" id="cpAccent" title="Accent / button color">
         </div>
         <div class="cp-color-row">
-          <label>Timer color</label>
-          <input type="color" id="cpTimer" title="Timer digits color">
+          <label>Text color</label>
+          <input type="color" id="cpTimer" title="All text color">
         </div>
       </div>
       <button class="cp-reset" id="cpReset">Reset to Default</button>
@@ -157,7 +159,7 @@
 
     const prefs = loadPrefs();
     accentPicker.value = prefs.accentColor;
-    timerPicker.value  = prefs.timerColor;
+    timerPicker.value  = prefs.textColor;
     updateActiveTheme(prefs.themeId);
 
     accentPicker.addEventListener('input', e => {
@@ -166,8 +168,8 @@
     });
 
     timerPicker.addEventListener('input', e => {
-      applyTimerColor(e.target.value);
-      savePrefs({ timerColor: e.target.value });
+      applyTextColor(e.target.value);
+      savePrefs({ textColor: e.target.value });
     });
 
     // Toggle open/close
@@ -186,7 +188,7 @@
       savePrefs(DEFAULTS);
       applyAll(DEFAULTS);
       accentPicker.value = DEFAULTS.accentColor;
-      timerPicker.value  = DEFAULTS.timerColor;
+      timerPicker.value  = DEFAULTS.textColor;
       updateActiveTheme(DEFAULTS.themeId);
     });
   }
