@@ -458,22 +458,17 @@ body {
 
 /* ── Mobile ─────────────────────────────────────────────────────────────── */
 
-@media (max-width: 480px) {
-  html, body {
-    height: 100%;
-  }
-
+@media (max-width: 768px) {
   body {
     align-items: flex-start;
-    justify-content: center;
-    min-height: 100%;
-    height: auto;
     padding: 56px 14px 24px;
+    height: 100vh;
+    overflow-x: hidden;
   }
 
   .container {
     width: 100%;
-    max-width: 420px;
+    max-width: 460px;
     padding: 28px 20px 24px;
     margin: 0 auto;
   }
