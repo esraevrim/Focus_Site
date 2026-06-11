@@ -8,17 +8,54 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// rooms: Map<roomId, { host: socketId|null, participants: Map<socketId, Participant> }>
+// rooms: Map<roomId, RoomState>
 const rooms = new Map();
 
 function generateRoomId() {
-  return crypto.randomBytes(3).toString('hex').toUpperCase(); // e.g. "A3F7B2"
+  return crypto.randomBytes(3).toString('hex').toUpperCase();
+}
+
+function makeSharedTimer(focusMinutes = 60, breakMinutes = 15) {
+  return {
+    running:        false,
+    isFocusPhase:   true,
+    focusMinutes,
+    breakMinutes,
+    secondsLeft:    focusMinutes * 60,
+    startedAt:      null,
+    secondsAtStart: null,
+  };
+}
+
+function sharedTimerSnapshot(ts) {
+  return { ...ts };
+}
+
+// Called by server setTimeout when the shared timer phase expires
+function onSharedTimerEnd(roomId) {
+  if (!rooms.has(roomId)) return;
+  const room = rooms.get(roomId);
+  const ts = room.sharedTimer;
+
+  ts.running        = false;
+  ts.startedAt      = null;
+  ts.secondsAtStart = null;
+
+  if (ts.isFocusPhase) {
+    ts.isFocusPhase = false;
+    ts.secondsLeft  = ts.breakMinutes * 60;
+  } else {
+    ts.isFocusPhase = true;
+    ts.secondsLeft  = ts.focusMinutes * 60;
+  }
+
+  io.to(roomId).emit('shared-timer-state', sharedTimerSnapshot(ts));
 }
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
-// Create a new room — returns a unique 6-char room ID
+// Create a new room
 app.post('/api/rooms', (req, res) => {
   let roomId;
   let attempts = 0;
@@ -27,12 +64,18 @@ app.post('/api/rooms', (req, res) => {
     attempts++;
   } while (rooms.has(roomId) && attempts < 100);
 
-  rooms.set(roomId, { host: null, participants: new Map() });
+  rooms.set(roomId, {
+    host:              null,
+    participants:      new Map(),
+    sharedTimer:       makeSharedTimer(),
+    sharedTimerTimeout: null,
+  });
+
   console.log(`Room created: ${roomId} (${rooms.size} total rooms)`);
   res.json({ roomId });
 });
 
-// Check whether a room exists before redirecting
+// Check whether a room exists
 app.get('/api/rooms/:roomId', (req, res) => {
   const id = req.params.roomId.toUpperCase();
   if (rooms.has(id)) {
@@ -43,6 +86,9 @@ app.get('/api/rooms/:roomId', (req, res) => {
 });
 
 io.on('connection', (socket) => {
+
+  // ── Join room ─────────────────────────────────────────────────────────
+
   socket.on('join-room', ({ roomId, nickname, avatar }) => {
     roomId = (roomId || '').toUpperCase();
 
@@ -56,34 +102,36 @@ io.on('connection', (socket) => {
 
     const room = rooms.get(roomId);
 
-    // First participant becomes host
     if (room.participants.size === 0) {
       room.host = socket.id;
     }
 
     const participant = {
-      id: socket.id,
+      id:       socket.id,
       nickname: (nickname || 'Anonymous').slice(0, 20),
-      avatar: avatar || '🐱',
-      status: 'Idle',
-      isHost: room.host === socket.id,
+      avatar:   avatar || '🐱',
+      status:   'Idle',
+      isHost:   room.host === socket.id,
       joinedAt: Date.now(),
     };
 
     room.participants.set(socket.id, participant);
 
-    // Send the full current room state only to the new joiner
     socket.emit('room-joined', {
       roomId,
-      you: socket.id,
+      you:          socket.id,
       participants: Array.from(room.participants.values()),
     });
 
-    // Notify everyone else that someone new arrived
+    // Send current shared timer state so late joiners sync immediately
+    socket.emit('shared-timer-state', sharedTimerSnapshot(room.sharedTimer));
+
     socket.to(roomId).emit('participant-joined', { participant });
 
     console.log(`"${participant.nickname}" joined room ${roomId} (${room.participants.size} in room)`);
   });
+
+  // ── Personal status update ────────────────────────────────────────────
 
   socket.on('update-status', ({ status }) => {
     const { roomId } = socket.data;
@@ -94,9 +142,93 @@ io.on('connection', (socket) => {
     if (!p) return;
 
     p.status = (status || 'Idle').slice(0, 60);
-    // Broadcast to ALL in room (including sender so their own card reflects it)
     io.to(roomId).emit('status-updated', { userId: socket.id, status: p.status });
   });
+
+  // ── Shared timer events ───────────────────────────────────────────────
+
+  socket.on('shared-timer-start', () => {
+    const { roomId } = socket.data;
+    if (!roomId || !rooms.has(roomId)) return;
+
+    const room = rooms.get(roomId);
+    const ts   = room.sharedTimer;
+    if (ts.running) return;
+
+    ts.running        = true;
+    ts.startedAt      = Date.now();
+    ts.secondsAtStart = ts.secondsLeft;
+
+    if (room.sharedTimerTimeout) clearTimeout(room.sharedTimerTimeout);
+    room.sharedTimerTimeout = setTimeout(
+      () => onSharedTimerEnd(roomId),
+      ts.secondsLeft * 1000
+    );
+
+    io.to(roomId).emit('shared-timer-state', sharedTimerSnapshot(ts));
+  });
+
+  socket.on('shared-timer-pause', () => {
+    const { roomId } = socket.data;
+    if (!roomId || !rooms.has(roomId)) return;
+
+    const room = rooms.get(roomId);
+    const ts   = room.sharedTimer;
+    if (!ts.running) return;
+
+    const elapsed  = Math.floor((Date.now() - ts.startedAt) / 1000);
+    ts.secondsLeft = Math.max(0, ts.secondsAtStart - elapsed);
+    ts.running        = false;
+    ts.startedAt      = null;
+    ts.secondsAtStart = null;
+
+    if (room.sharedTimerTimeout) clearTimeout(room.sharedTimerTimeout);
+
+    io.to(roomId).emit('shared-timer-state', sharedTimerSnapshot(ts));
+  });
+
+  socket.on('shared-timer-reset', () => {
+    const { roomId } = socket.data;
+    if (!roomId || !rooms.has(roomId)) return;
+
+    const room = rooms.get(roomId);
+    const ts   = room.sharedTimer;
+
+    if (room.sharedTimerTimeout) clearTimeout(room.sharedTimerTimeout);
+
+    ts.running        = false;
+    ts.isFocusPhase   = true;
+    ts.secondsLeft    = ts.focusMinutes * 60;
+    ts.startedAt      = null;
+    ts.secondsAtStart = null;
+
+    io.to(roomId).emit('shared-timer-state', sharedTimerSnapshot(ts));
+  });
+
+  socket.on('shared-timer-config', ({ focusMinutes, breakMinutes }) => {
+    const { roomId } = socket.data;
+    if (!roomId || !rooms.has(roomId)) return;
+
+    focusMinutes = Math.max(1, Math.min(180, parseInt(focusMinutes) || 60));
+    breakMinutes = Math.max(1, Math.min(60,  parseInt(breakMinutes) || 15));
+
+    const room = rooms.get(roomId);
+    const ts   = room.sharedTimer;
+
+    if (room.sharedTimerTimeout) clearTimeout(room.sharedTimerTimeout);
+
+    ts.running        = false;
+    ts.isFocusPhase   = true;
+    ts.focusMinutes   = focusMinutes;
+    ts.breakMinutes   = breakMinutes;
+    ts.secondsLeft    = focusMinutes * 60;
+    ts.startedAt      = null;
+    ts.secondsAtStart = null;
+
+    io.to(roomId).emit('shared-timer-state', sharedTimerSnapshot(ts));
+  });
+
+  // ── Disconnect ────────────────────────────────────────────────────────
 
   socket.on('disconnect', () => {
     const { roomId } = socket.data;
@@ -107,12 +239,12 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('participant-left', { userId: socket.id });
 
     if (room.participants.size === 0) {
+      if (room.sharedTimerTimeout) clearTimeout(room.sharedTimerTimeout);
       rooms.delete(roomId);
       console.log(`Room ${roomId} deleted (empty)`);
       return;
     }
 
-    // Transfer host to the next participant if host left
     if (room.host === socket.id) {
       const newHostId = room.participants.keys().next().value;
       room.host = newHostId;

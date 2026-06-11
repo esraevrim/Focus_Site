@@ -2,12 +2,12 @@
 // Responsibilities:
 //   1. Parse URL params and join the socket room
 //   2. Render participant cards and keep them in sync
-//   3. Run a personal Pomodoro timer and broadcast status changes
+//   3. Run a personal OR shared Pomodoro timer and broadcast status changes
 //   4. Keep the top-bar room ID display and "Copy" button working
 
 (function () {
 
-  // ── URL params ────────────────────────────────────────────────────────
+  // ── URL params ────────────────────────────────────────────────────────────
 
   const params   = new URLSearchParams(window.location.search);
   const roomId   = (params.get('id') || '').toUpperCase();
@@ -19,7 +19,7 @@
     return;
   }
 
-  // ── Top-bar room ID + copy button ─────────────────────────────────────
+  // ── Top-bar ───────────────────────────────────────────────────────────────
 
   document.getElementById('roomIdDisplay').textContent = roomId;
   document.title = `Study Room ${roomId}`;
@@ -36,141 +36,251 @@
     window.location.href = '/';
   });
 
-  // ── Timer logic (mirrors script.js but also emits status via socket) ──
+  // ── DOM refs ──────────────────────────────────────────────────────────────
 
-  const timerEl      = document.getElementById('timer');
-  const modeEl       = document.getElementById('mode');
-  const startPauseBtn= document.getElementById('startPause');
-  const resetBtn     = document.getElementById('reset');
-  const focusInput   = document.getElementById('focusInput');
-  const breakInput   = document.getElementById('breakInput');
-  const totalFocusEl = document.getElementById('totalFocus');
-  const statusSelect = document.getElementById('statusSelect');
+  const timerEl        = document.getElementById('timer');
+  const modeEl         = document.getElementById('mode');
+  const startPauseBtn  = document.getElementById('startPause');
+  const resetBtn       = document.getElementById('reset');
+  const focusInput     = document.getElementById('focusInput');
+  const breakInput     = document.getElementById('breakInput');
+  const totalFocusEl   = document.getElementById('totalFocus');
+  const statusSelect   = document.getElementById('statusSelect');
+  const personalModeBtn= document.getElementById('personalModeBtn');
+  const sharedModeBtn  = document.getElementById('sharedModeBtn');
+  const sharedBadge    = document.getElementById('sharedTimerBadge');
 
-  let timerInterval      = null;
-  let focusTrackInterval = null;
-  let isRunning    = false;
-  let isFocusMode  = true;
-  let secondsLeft  = parseInt(focusInput.value) * 60;
-  let totalFocusSeconds = 0;
+  // ── Utility ───────────────────────────────────────────────────────────────
 
   function fmt(s) {
     return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
   }
 
-  function updateDisplay() {
-    timerEl.textContent = fmt(secondsLeft);
-    document.title = `${isFocusMode ? '✅' : '☕'} ${fmt(secondsLeft)} — Room ${roomId}`;
-  }
+  // ── Timer mode ('personal' | 'shared') ────────────────────────────────────
 
-  // Derive the status string to broadcast based on timer state
-  function currentStatus() {
-    if (!isRunning) return statusSelect.value;
-    return isFocusMode ? 'Focused' : 'On a Break';
-  }
+  let timerMode = 'personal';
 
-  function emitStatus() {
-    socket.emit('update-status', { status: currentStatus() });
-  }
+  function setTimerMode(mode) {
+    timerMode = mode;
 
-  function onTimerEnd() {
-    clearInterval(timerInterval);
-    clearInterval(focusTrackInterval);
-    isRunning = false;
-    startPauseBtn.textContent = 'Start';
+    personalModeBtn.classList.toggle('active', mode === 'personal');
+    sharedModeBtn.classList.toggle('active',   mode === 'shared');
+    sharedBadge.style.display = mode === 'shared' ? 'block' : 'none';
 
-    if (isFocusMode) {
-      // Switch to break
-      isFocusMode = false;
-      modeEl.textContent = 'BREAK';
-      secondsLeft = parseInt(breakInput.value) * 60;
-      statusSelect.value = 'On a Break';
+    if (mode === 'personal') {
+      // Stop shared display; restore personal UI state
+      stopSharedDisplay();
+      updatePersonalDisplay();
+      setPersonalControlsEnabled(true);
     } else {
-      // Switch back to focus
-      isFocusMode = true;
-      modeEl.textContent = 'FOCUS';
-      secondsLeft = parseInt(focusInput.value) * 60;
-      statusSelect.value = 'Idle';
+      // Stop personal timer if running
+      if (personalRunning) pausePersonalTimer();
+      startSharedDisplay();
+      applySharedState();
     }
+  }
 
+  personalModeBtn.addEventListener('click', () => setTimerMode('personal'));
+  sharedModeBtn.addEventListener('click',   () => setTimerMode('shared'));
+
+  // ── Personal timer ────────────────────────────────────────────────────────
+
+  let personalInterval      = null;
+  let focusTrackInterval    = null;
+  let personalRunning       = false;
+  let personalIsFocusPhase  = true;
+  let personalSecondsLeft   = parseInt(focusInput.value) * 60;
+  let totalFocusSeconds     = 0;
+
+  function updatePersonalDisplay() {
+    timerEl.textContent = fmt(personalSecondsLeft);
+    modeEl.textContent  = personalIsFocusPhase ? 'FOCUS' : 'BREAK';
+    document.title = `${personalIsFocusPhase ? '✅' : '☕'} ${fmt(personalSecondsLeft)} — Room ${roomId}`;
+  }
+
+  function setPersonalControlsEnabled(enabled) {
+    startPauseBtn.disabled = !enabled;
+    resetBtn.disabled      = !enabled;
+    focusInput.disabled    = !enabled;
+    breakInput.disabled    = !enabled;
+  }
+
+  function pausePersonalTimer() {
+    clearInterval(personalInterval);
+    clearInterval(focusTrackInterval);
+    personalRunning = false;
+    startPauseBtn.textContent = 'Start';
     statusSelect.disabled = false;
-    updateDisplay();
     emitStatus();
   }
 
-  function tick() {
-    if (secondsLeft > 0) {
-      secondsLeft--;
-      updateDisplay();
+  function onPersonalTimerEnd() {
+    clearInterval(personalInterval);
+    clearInterval(focusTrackInterval);
+    personalRunning = false;
+    startPauseBtn.textContent = 'Start';
+
+    if (personalIsFocusPhase) {
+      personalIsFocusPhase = false;
+      modeEl.textContent   = 'BREAK';
+      personalSecondsLeft  = parseInt(breakInput.value) * 60;
+      statusSelect.value   = 'On a Break';
     } else {
-      onTimerEnd();
+      personalIsFocusPhase = true;
+      modeEl.textContent   = 'FOCUS';
+      personalSecondsLeft  = parseInt(focusInput.value) * 60;
+      statusSelect.value   = 'Idle';
+    }
+
+    statusSelect.disabled = false;
+    updatePersonalDisplay();
+    emitStatus();
+  }
+
+  function personalTick() {
+    if (personalSecondsLeft > 0) {
+      personalSecondsLeft--;
+      updatePersonalDisplay();
+    } else {
+      onPersonalTimerEnd();
     }
   }
 
   startPauseBtn.addEventListener('click', () => {
-    if (isRunning) {
-      clearInterval(timerInterval);
-      clearInterval(focusTrackInterval);
-      isRunning = false;
-      startPauseBtn.textContent = 'Start';
-      statusSelect.disabled = false;
-      // Status reverts to whatever the select shows
-      emitStatus();
+    if (timerMode === 'shared') {
+      // Delegate to shared timer
+      if (sharedState && sharedState.running) {
+        socket.emit('shared-timer-pause');
+      } else {
+        socket.emit('shared-timer-start');
+      }
+      return;
+    }
+
+    if (personalRunning) {
+      pausePersonalTimer();
     } else {
-      timerInterval = setInterval(tick, 1000);
-      if (isFocusMode) {
+      personalInterval = setInterval(personalTick, 1000);
+      if (personalIsFocusPhase) {
         focusTrackInterval = setInterval(() => {
           totalFocusSeconds++;
           totalFocusEl.textContent = fmt(totalFocusSeconds);
         }, 1000);
       }
-      isRunning = true;
+      personalRunning = true;
       startPauseBtn.textContent = 'Pause';
-      statusSelect.disabled = true; // auto-derived while running
+      statusSelect.disabled = true;
       emitStatus();
     }
   });
 
   resetBtn.addEventListener('click', () => {
-    clearInterval(timerInterval);
+    if (timerMode === 'shared') {
+      socket.emit('shared-timer-reset');
+      return;
+    }
+
+    clearInterval(personalInterval);
     clearInterval(focusTrackInterval);
-    isRunning = false;
-    isFocusMode = true;
+    personalRunning      = false;
+    personalIsFocusPhase = true;
     startPauseBtn.textContent = 'Start';
-    modeEl.textContent = 'FOCUS';
-    secondsLeft = parseInt(focusInput.value) * 60;
-    statusSelect.value = 'Idle';
+    modeEl.textContent   = 'FOCUS';
+    personalSecondsLeft  = parseInt(focusInput.value) * 60;
+    statusSelect.value   = 'Idle';
     statusSelect.disabled = false;
-    updateDisplay();
+    updatePersonalDisplay();
     emitStatus();
   });
 
   focusInput.addEventListener('change', () => {
-    if (!isRunning && isFocusMode) {
-      secondsLeft = parseInt(focusInput.value) * 60;
-      updateDisplay();
+    if (timerMode === 'shared') {
+      socket.emit('shared-timer-config', {
+        focusMinutes: parseInt(focusInput.value) || 60,
+        breakMinutes: parseInt(breakInput.value) || 15,
+      });
+      return;
+    }
+    if (!personalRunning && personalIsFocusPhase) {
+      personalSecondsLeft = parseInt(focusInput.value) * 60;
+      updatePersonalDisplay();
     }
   });
 
   breakInput.addEventListener('change', () => {
-    if (!isRunning && !isFocusMode) {
-      secondsLeft = parseInt(breakInput.value) * 60;
-      updateDisplay();
+    if (timerMode === 'shared') {
+      socket.emit('shared-timer-config', {
+        focusMinutes: parseInt(focusInput.value) || 60,
+        breakMinutes: parseInt(breakInput.value) || 15,
+      });
+      return;
+    }
+    if (!personalRunning && !personalIsFocusPhase) {
+      personalSecondsLeft = parseInt(breakInput.value) * 60;
+      updatePersonalDisplay();
     }
   });
 
-  // Manual status change only fires when the timer is stopped
   statusSelect.addEventListener('change', () => {
-    if (!isRunning) emitStatus();
+    if (!personalRunning) emitStatus();
   });
 
-  updateDisplay();
+  updatePersonalDisplay();
 
-  // ── Socket.IO & room state ─────────────────────────────────────────────
+  // ── Shared timer ──────────────────────────────────────────────────────────
+
+  let sharedState       = null;
+  let sharedDisplayInterval = null;
+
+  function calcSharedSecondsLeft(state) {
+    if (!state.running) return state.secondsLeft;
+    const elapsed = Math.floor((Date.now() - state.startedAt) / 1000);
+    return Math.max(0, state.secondsAtStart - elapsed);
+  }
+
+  function applySharedState() {
+    if (!sharedState || timerMode !== 'shared') return;
+
+    const sLeft = calcSharedSecondsLeft(sharedState);
+    timerEl.textContent = fmt(sLeft);
+    modeEl.textContent  = sharedState.isFocusPhase ? 'FOCUS' : 'BREAK';
+
+    startPauseBtn.textContent = sharedState.running ? 'Pause' : 'Start';
+    startPauseBtn.disabled    = false;
+    resetBtn.disabled         = false;
+
+    // Sync inputs to reflect shared config
+    focusInput.value = sharedState.focusMinutes;
+    breakInput.value = sharedState.breakMinutes;
+
+    // Status follows shared timer
+    if (sharedState.running) {
+      statusSelect.value    = sharedState.isFocusPhase ? 'Focused' : 'On a Break';
+      statusSelect.disabled = true;
+    } else {
+      statusSelect.disabled = false;
+    }
+
+    document.title = `${sharedState.isFocusPhase ? '✅' : '☕'} ${fmt(sLeft)} — Room ${roomId}`;
+  }
+
+  function startSharedDisplay() {
+    if (sharedDisplayInterval) clearInterval(sharedDisplayInterval);
+    // Update twice per second for smooth display without heavy load
+    sharedDisplayInterval = setInterval(() => {
+      if (sharedState && timerMode === 'shared') applySharedState();
+    }, 500);
+  }
+
+  function stopSharedDisplay() {
+    clearInterval(sharedDisplayInterval);
+    sharedDisplayInterval = null;
+  }
+
+  // ── Socket.IO & room state ─────────────────────────────────────────────────
 
   const socket = io();
 
-  // participants: Map<socketId, ParticipantObject>
   const participants = new Map();
   let myId = null;
 
@@ -185,6 +295,11 @@
     renderAll();
   });
 
+  socket.on('shared-timer-state', (state) => {
+    sharedState = state;
+    if (timerMode === 'shared') applySharedState();
+  });
+
   socket.on('participant-joined', ({ participant }) => {
     participants.set(participant.id, participant);
     renderCard(participant, true);
@@ -195,8 +310,8 @@
     const el = document.getElementById(`card-${CSS.escape(userId)}`);
     if (el) {
       el.style.transition = 'opacity 0.3s, transform 0.3s';
-      el.style.opacity = '0';
-      el.style.transform = 'scale(0.85)';
+      el.style.opacity    = '0';
+      el.style.transform  = 'scale(0.85)';
       setTimeout(() => el.remove(), 300);
     }
     if (participants.size === 0) showEmpty();
@@ -211,7 +326,7 @@
 
   socket.on('host-changed', ({ newHostId }) => {
     participants.forEach((p, id) => { p.isHost = (id === newHostId); });
-    renderAll(); // re-render so host badge moves
+    renderAll();
   });
 
   socket.on('room-error', ({ message }) => {
@@ -219,15 +334,31 @@
     window.location.href = '/';
   });
 
-  // ── Render helpers ─────────────────────────────────────────────────────
+  // ── Status emission ───────────────────────────────────────────────────────
+
+  function currentStatus() {
+    if (timerMode === 'shared') {
+      if (!sharedState) return statusSelect.value;
+      if (!sharedState.running) return statusSelect.value;
+      return sharedState.isFocusPhase ? 'Focused' : 'On a Break';
+    }
+    if (!personalRunning) return statusSelect.value;
+    return personalIsFocusPhase ? 'Focused' : 'On a Break';
+  }
+
+  function emitStatus() {
+    socket.emit('update-status', { status: currentStatus() });
+  }
+
+  // ── Render helpers ────────────────────────────────────────────────────────
 
   function statusClass(status) {
     const s = (status || '').toLowerCase();
-    if (s.includes('focus'))              return 'status-focused';
-    if (s.includes('break'))             return 'status-break';
-    if (s.includes('pomodoro'))          return 'status-pomodoro';
-    if (s.includes('music'))             return 'status-music';
-    if (s.includes('done'))              return 'status-done';
+    if (s.includes('focus'))                       return 'status-focused';
+    if (s.includes('break'))                       return 'status-break';
+    if (s.includes('pomodoro'))                    return 'status-pomodoro';
+    if (s.includes('music'))                       return 'status-music';
+    if (s.includes('done'))                        return 'status-done';
     if (s.includes('brb') || s.includes('right back')) return 'status-brb';
     return 'status-idle';
   }
@@ -241,13 +372,11 @@
   }
 
   function renderCard(p, animate) {
-    // Remove existing card if re-rendering
     const existing = document.getElementById(`card-${CSS.escape(p.id)}`);
     if (existing) existing.remove();
 
     const isYou = p.id === myId;
-
-    const card = document.createElement('div');
+    const card  = document.createElement('div');
     card.className = `participant-card${isYou ? ' is-you' : ''}`;
     card.id = `card-${CSS.escape(p.id)}`;
     card.innerHTML = `
@@ -257,26 +386,19 @@
       <div class="participant-name">${escHtml(p.nickname)}</div>
       <span class="participant-status ${statusClass(p.status)}">${escHtml(p.status)}</span>
     `;
-
     if (!animate) card.style.animation = 'none';
     grid.appendChild(card);
   }
 
   function renderAll() {
     grid.innerHTML = '';
+    if (participants.size === 0) { showEmpty(); return; }
 
-    if (participants.size === 0) {
-      showEmpty();
-      return;
-    }
-
-    // Own card first, then by join order
     const sorted = [...participants.values()].sort((a, b) => {
       if (a.id === myId) return -1;
       if (b.id === myId) return 1;
       return a.joinedAt - b.joinedAt;
     });
-
     sorted.forEach(p => renderCard(p, false));
   }
 
@@ -284,7 +406,7 @@
     const badge = document.querySelector(`#card-${CSS.escape(userId)} .participant-status`);
     if (!badge) return;
     badge.textContent = status;
-    badge.className = `participant-status ${statusClass(status)}`;
+    badge.className   = `participant-status ${statusClass(status)}`;
   }
 
   function showEmpty() {

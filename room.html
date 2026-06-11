@@ -36,9 +36,17 @@
       </div>
     </div>
 
-    <!-- Right panel: personal timer (same functionality as index.html) -->
+    <!-- Right panel: timer (personal or shared) -->
     <div class="timer-panel">
       <div class="container room-container">
+
+        <!-- Mode switcher -->
+        <div class="timer-mode-switcher">
+          <button class="timer-mode-btn active" id="personalModeBtn">Personal</button>
+          <button class="timer-mode-btn" id="sharedModeBtn">👥 Shared</button>
+        </div>
+        <div class="shared-timer-badge" id="sharedTimerBadge" style="display:none">Room timer — synced for everyone</div>
+
         <h1 id="mode">FOCUS</h1>
         <div class="timer" id="timer">60:00</div>
 
@@ -78,6 +86,7 @@
 
   <!-- Socket.IO client is auto-served by the server at this path -->
   <script src="/socket.io/socket.io.js"></script>
+  <script src="theme.js"></script>
   <script src="room.js"></script>
 
 </body>
